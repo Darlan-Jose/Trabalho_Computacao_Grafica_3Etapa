@@ -20,16 +20,14 @@ from app.mission import Mission
 from app.scene import apply_mission, build_scene
 from framework.core import Camera
 from framework.renderer import Renderer
+from framework.window import create_window
 
 
 def validate():
     pygame.display.init()
     pygame.font.init()
-    pygame.display.gl_set_attribute(pygame.GL_CONTEXT_MAJOR_VERSION, 3)
-    pygame.display.gl_set_attribute(pygame.GL_CONTEXT_MINOR_VERSION, 3)
-    pygame.display.gl_set_attribute(pygame.GL_CONTEXT_PROFILE_MASK, pygame.GL_CONTEXT_PROFILE_CORE)
     size = (960, 640)
-    pygame.display.set_mode(size, pygame.OPENGL | pygame.DOUBLEBUF)
+    samples = create_window(size, 4)
     renderer = None
     try:
         renderer = Renderer(1024)
@@ -83,6 +81,7 @@ def validate():
         )
         print("OpenGL:", gl.glGetString(gl.GL_VERSION).decode())
         print("GPU:", gl.glGetString(gl.GL_RENDERER).decode())
+        print("MSAA:", samples)
     finally:
         if renderer is not None:
             renderer.close()
