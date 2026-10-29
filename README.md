@@ -4,6 +4,8 @@ Trabalho prático de Computação Gráfica, 2026/02. Aplicação **Python + Pyga
 
 ![Cena da Base Aurora durante a inspeção](docs/preview.png)
 
+A versão revisada inclui inclinação durante as manobras, aceleração e desaceleração dos rotores, protetores de hélice, detalhes de cabine e base, painéis solares texturizados e antisserrilhamento MSAA. O painel tem mapa de posições, barras de potência e uma linha do tempo clicável; a câmera pode acompanhar as aeronaves.
+
 ## Integrantes e temas
 
 Os temas **3 e 4** foram informados pelo solicitante. Os nomes e a distribuição efetiva das contribuições não foram informados; devem ser preenchidos pela dupla antes da entrega.
@@ -62,6 +64,9 @@ O controlador compartilhado impede que a inspeção aconteça antes do encontro 
 |---|---|
 | Espaço | Pausar/retomar posições, hélices e sequência; câmera continua livre. |
 | Setas | Orbitar a câmera horizontal/verticalmente. |
+| Arrastar com botão esquerdo | Orbitar a câmera com o mouse. |
+| Clique na linha do tempo | Escolher a etapa e o instante, inclusive durante a pausa. |
+| F ou botão “Seguir aeronaves” | Ativar/desativar o acompanhamento suave da formação. W/A/S/D libera o acompanhamento. |
 | W / A / S / D | Deslocar o alvo da câmera no plano horizontal. |
 | Q / E ou roda do mouse | Afastar/aproximar a câmera. |
 | 1 / 2 / 3 | Vista geral, encontro e vista superior. |
@@ -72,10 +77,11 @@ O controlador compartilhado impede que a inspeção aconteça antes do encontro 
 | P | Ligar/desligar sombra projetada para comparar com o sombreamento. |
 | B | Ligar/desligar faixas procedurais de segurança do hangar. |
 | H | Exibir/ocultar ajuda. |
+| Tab | Ocultar/exibir o painel para uma apresentação sem sobreposições. |
 | F12 | Salvar captura PNG. |
 | Esc | Encerrar. |
 
-O painel mostra a etapa, sua dependência, o progresso, as alturas das origens dos modelos e a distância entre elas. As unidades da cena são tratadas como metros para fins ilustrativos.
+O painel mostra a etapa, sua dependência, o progresso, as alturas das origens dos modelos e a distância entre elas. As barras abaixo das aeronaves indicam a potência normalizada dos rotores; o mapa acompanha suas posições em XZ. As unidades da cena são tratadas como metros para fins ilustrativos. Os cliques no painel são ajustados à escala quando a janela é redimensionada.
 
 ## Correspondência com os requisitos do PDF
 
@@ -104,9 +110,10 @@ app/hud.py                 painel e ajuda
 framework/core.py          Object3D, Scene, Mesh, Material, Camera
 framework/matrix.py        transformações e projeções
 framework/geometry.py      caixas, esferas e cilindros/cones truncados
+framework/window.py        contexto OpenGL com MSAA e fallback
 framework/renderer.py      shaders, VAO/VBO, texturas e shadow mapping
 shaders/                   programas GLSL separados e comentados
-assets/textures/            quatro imagens PNG incluídas
+assets/textures/            cinco imagens PNG incluídas
 tools/generate_textures.py  geração reprodutível das imagens
 tools/validate_render.py    teste de integração com OpenGL real
 tools/package_project.py    gera arquivo ZIP para entrega
@@ -131,6 +138,13 @@ python main.py --headless --frames 223 --fixed-dt 0.1666666667 --shadow-size 102
 ```
 
 Para uma comparação visual de sombras, use `--time 16 --fixed-dt 0 --frames 1 --screenshot ...`, com e sem `--no-shadows`. Para computadores mais lentos, use `python main.py --shadow-size 1024 --size 960 640`.
+
+`--msaa 0` desliga o antisserrilhamento; o padrão é 4 amostras, com fallback automático se o driver não suportar. `--view encontro` inicia com enquadramento próximo. `--screenshot arquivo.png`, sem `--frames`, captura um quadro e encerra.
+
+```bash
+python main.py --view encontro --time 16
+python main.py --headless --view encontro --time 16 --screenshot captures/encontro.png
+```
 
 Resultados registrados em [VALIDACAO.md](docs/VALIDACAO.md). A execução interativa com teclado e driver da máquina de apresentação deve ser conferida antes da aula.
 
@@ -166,6 +180,8 @@ python tools/package_project.py
 ```
 
 O comando cria `dist/base-aurora-entrega.zip` com fontes, framework, shaders, texturas, testes e documentação, sem `.venv`, caches ou capturas temporárias. Antes da entrega, preencher os nomes, matrículas e contribuições; executar a aplicação no computador da apresentação e ensaiar o roteiro com os dois integrantes.
+
+Para validar, empacotar e enviar os seis commits explicativos à branch atual no repositório informado, use `bash tools/publish_github.sh`. Veja as verificações e os passos em [PUBLICACAO.md](docs/PUBLICACAO.md). Esse envio precisa ser feito em um terminal com escrita na pasta `.git`, rede e autenticação no GitHub.
 
 ## Diagnóstico
 

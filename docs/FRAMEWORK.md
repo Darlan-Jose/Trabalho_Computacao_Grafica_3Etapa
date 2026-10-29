@@ -24,6 +24,9 @@ A arquitetura separa objeto transformável, cena, câmera, malha, geometria, mat
 7. **Aprimoramentos da sombra:** bias dependente da inclinação e PCF 3×3 ajudam a reduzir autossombra e bordas serrilhadas. São escolhas locais, não uma afirmação de transcrição exata dos exemplos do livro.
 8. **Câmera:** controle orbital com deslocamento do alvo substitui um rig em primeira pessoa. Satisfaz o controle de orientação/posição por teclado.
 9. **Animação:** a aplicação possui uma linha do tempo compartilhada por etapas; essa lógica pertence à cena e fica fora do renderizador.
+10. **Geometria paramétrica adicional:** `torus` produz os protetores de hélice do drone com posições, normais analíticas e UVs. Os triângulos têm orientação externa verificada pelos testes.
+11. **Janela:** `framework/window.py` solicita MSAA 4×, com nova tentativa sem MSAA caso o driver rejeite o contexto. Isso suaviza contornos de geometria; PCF continua responsável pelas bordas das sombras.
+12. **Câmera e painel:** acompanhamento exponencial da formação, órbita por arrasto e cliques na linha do tempo. A navegação preserva o estado de pausa e não depende do renderizador para calcular poses.
 
 ## Convenções
 

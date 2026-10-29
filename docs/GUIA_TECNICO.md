@@ -78,7 +78,7 @@ O vertex shader produz posição e normal em espaço mundo, UV e posição na c�
 | `shininess` | `float` | Expoente do brilho especular. |
 | `emission` | `float` | Mistura com cor sem iluminação nos sinais e luzes decorativas. |
 
-As cores ambiente e da luz são constantes do fragment shader, não uniforms. Os sinais emissivos não iluminam outros objetos: são apenas superfícies cuja cor permanece visível.
+As cores de referência do ambiente e da luz são constantes do fragment shader, não uniforms. A luz ambiente mistura uma cor de chão e uma cor de céu conforme `N.y`, valorizando a orientação das superfícies. Um termo de brilho rasante baseado em `pow(1-dot(N,V),3)` reforça contornos nos materiais especulares; é uma aproximação artística, não reflexão de objetos da cena. Os sinais emissivos não iluminam outros objetos: são apenas superfícies cuja cor permanece visível.
 
 ### Programa de profundidade: `depth.vert` + `depth.frag`
 
@@ -125,7 +125,9 @@ Limitações: uma única luz direcional, volume ortográfico fixo, sombras de re
 
 O relógio é atualizado por `tempo += dt * velocidade`. Cada etapa recebe progresso normalizado entre 0 e 1. Para evitar mudanças bruscas de velocidade nos extremos, a interpolação usa `s(t)=t²(3−2t)`.
 
-As hélices recebem `ângulo = velocidade_angular × tempo`, com velocidades ilustrativas em rad/s. Não se usa `ângulo += constante` por quadro. A imagem pode apresentar aliasing temporal nas pás, mas suas posições e velocidades matemáticas permanecem independentes do FPS.
+As hélices recebem `ângulo = velocidade_angular × integral_da_potência`. `rotor_motion` usa uma rampa smoothstep na partida e na parada. A primitiva de `3u²−2u³` é `u³−u⁴/2`, permitindo calcular a fase diretamente, sem integração numérica por quadro. O helicóptero acelera em 0–2 s; o drone em 9–11 s, antes da decolagem; ambos desaceleram em 35–37 s. A fase inclui a contribuição dos ciclos anteriores para não haver saltos. Não se usa `ângulo += constante` por quadro. A imagem ainda pode apresentar aliasing temporal nas pás, mas as velocidades matemáticas permanecem independentes do FPS.
+
+`flight_tilt` projeta a velocidade do percurso nos eixos locais da aeronave e calcula pequenas inclinações de arfagem e rolagem, limitadas a aproximadamente 9° e 10°. A derivada do smoothstep é zero nos limites das etapas; as aeronaves voltam suavemente à horizontal. Essa inclinação é ilustrativa, sem dinâmica física de sustentação.
 
 Durante a inspeção, a posição do drone é calculada relativamente ao helicóptero em uma circunferência. Durante a escolta, `posição_drone = posição_helicóptero + (2,8; 0,35; 1,7)`. Isso garante uma relação espacial explícita. Um controlador comum ordena as etapas, em vez de duas animações independentes.
 
@@ -135,4 +137,14 @@ A conclusão de cada percurso programado coincide com o fim da sua etapa. Não s
 
 `assets/textures/concrete.png` é ruído determinístico salvo como imagem; os helipontos e a placa são desenhos 2D salvos em PNG. Durante a aplicação, são imagens carregadas por `pygame.image.load` e enviadas para a GPU com mipmaps e repetição UV.
 
+`solar.png` acrescenta o padrão de células fotovoltaicas do telhado. As imagens dos helipontos agora são aplicadas sobre cilindros finos, usando os UVs radiais das tampas; não há mais um quadrado de textura sobre o disco.
+
 O recurso adicional de faixas diagonais é diferente: `step(0.48, fract((uv.x+uv.y)*12.0))` escolhe entre amarelo e escuro por fragmento, sem imagem de entrada. A tecla B permite isolá-lo. As imagens continuam visíveis mesmo quando esse efeito é desligado, preservando o requisito obrigatório de textura de imagem.
+
+## 10. Interação e antisserrilhamento
+
+O painel desenha em um espaço lógico mínimo de 960×640 e reduz a imagem quando necessário. A posição do clique é dividida pela mesma escala antes do teste dos retângulos. `Mission.seek` escolhe etapa/progresso preservando ciclo, velocidade e pausa. Um clique consumido pelo painel não começa a arrastar a câmera.
+
+No acompanhamento, o alvo da câmera converge ao centro entre as aeronaves com `alpha = 1-exp(-4*dt)`. Para alvo fixo, a evolução é equivalente em diferentes taxas de quadros. W/A/S/D cancela o acompanhamento e devolve o controle manual. O relógio dessa câmera continua ativo durante a pausa da missão.
+
+MSAA 4× suaviza arestas da geometria na janela. Se a criação do contexto falhar, a aplicação tenta novamente sem MSAA. `--msaa 0` permite comparar ou reduzir custo. O mapa de sombras permanece uma textura de profundidade sem multisampling, com filtragem PCF no fragment shader.

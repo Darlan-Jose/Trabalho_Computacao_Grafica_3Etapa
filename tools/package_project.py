@@ -10,6 +10,7 @@ def package():
     output = ROOT / "dist" / "base-aurora-entrega.zip"
     output.parent.mkdir(exist_ok=True)
     roots = [
+        ".gitignore",
         "main.py",
         "README.md",
         "requirements.txt",

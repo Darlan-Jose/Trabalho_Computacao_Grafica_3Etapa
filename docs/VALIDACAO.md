@@ -4,7 +4,7 @@ Validação realizada em **28/10/2026**. Ambiente: Linux, Python 3.14.8, NumPy 2
 
 O contexto real utilizado foi **OpenGL 4.6 Core Profile, Mesa 26.2.4-arch1.1**, com renderização por software **llvmpipe (LLVM 23.1.1, 256 bits)**. Os shaders solicitam GLSL 330 e a aplicação solicita contexto OpenGL 3.3 core. Os resultados não constituem teste em todos os sistemas ou GPUs.
 
-## Testes unitários: 18 aprovados
+## Testes unitários: 27 aprovados
 
 Comando:
 
@@ -25,6 +25,11 @@ Cobertura dos testes:
 - Matriz normal preservando perpendicularidade sob escala não uniforme.
 - Matrizes de câmera, planos de recorte e movimento da câmera independente da missão.
 - Quatro rotores independentes e existência de todas as imagens necessárias.
+- Integral da potência dos rotores e continuidade da fase durante partida, parada e repetição.
+- Inclinação durante o deslocamento e retorno à horizontal nos limites das etapas.
+- Acompanhamento da câmera equivalente em diferentes taxas de quadros; controle manual libera o acompanhamento.
+- Cliques na linha do tempo em 1280×800, 960×640 e 480×480; botões de pausa e acompanhamento.
+- Fallback de criação da janela quando o driver rejeita MSAA, verificado por simulação dessa falha.
 
 O teste de separação mede distâncias entre as origens; não é um detector de colisão das malhas.
 
@@ -34,7 +39,7 @@ O teste de separação mede distâncias entre as origens; não é um detector de
 python tools/validate_render.py
 ```
 
-O teste compila e liga os três programas GLSL, cria VAOs/VBOs, carrega as imagens e verifica o FBO de profundidade. Em 960×640 com mapa de 1024×1024, a ativação das sombras alterou **7.913 pixels** acima do limiar de 12 níveis por canal utilizado pelo teste, reduzindo a contribuição luminosa total.
+O teste compila e liga os três programas GLSL, cria VAOs/VBOs, carrega as imagens e verifica o FBO de profundidade. Em 960×640, com MSAA 4× e mapa de 1024×1024, a ativação das sombras alterou **8.675 pixels** acima do limiar de 12 níveis por canal utilizado pelo teste, reduzindo a contribuição luminosa total.
 
 Também foram verificados:
 
@@ -50,7 +55,11 @@ Foi executado um ciclo de 37 segundos simulados, usando 223 quadros e `--fixed-d
 
 O bias foi ajustado à inclinação da superfície e à resolução do mapa após a detecção de autossombra nas capturas iniciais. A captura final de apresentação está em [preview.png](preview.png).
 
+Na revisão visual foram conferidos os protetores de hélice, janelas da cabine, painéis solares, UVs das tampas circulares e a interface em 480×480. O contexto confirmou MSAA 4×; também foi executado `--msaa 0`. Um enquadramento próximo está em [encontro.png](encontro.png).
+
 Foi executado também um teste de oito quadros do loop real com eventos de teclado sintetizados: pausa, retomada, avanço de etapa, reinício, mudança de velocidade, presets de câmera, restauração, ajuda e ativação/desativação dos efeitos. O relógio e as opções ao final coincidiram com os valores esperados. Isso valida o tratamento programático dos eventos, não substitui uma sessão com teclado físico na máquina da aula.
+
+A revisão acrescentou um teste de nove quadros do loop real com clique na linha do tempo durante a pausa, ativação do acompanhamento, ocultação do painel, arrasto, zoom por roda e retomada. O instante final foi 17,5 s, com o acompanhamento ativo e a distância da câmera alterada para 22 unidades.
 
 ## Verificação estática
 

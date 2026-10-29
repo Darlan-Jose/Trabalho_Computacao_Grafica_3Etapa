@@ -27,6 +27,8 @@ python main.py --time 14
 4. Usar 1 para vista geral, depois R para reiniciar.
 5. Usar N para chegar rapidamente a uma etapa durante perguntas.
 6. Abrir `docs/GUIA_TECNICO.md` e os shaders no editor antes da fala.
+7. Clicar na linha do tempo para selecionar uma etapa; usar F para acompanhar a formação e Tab para ocultar o painel.
+8. Observar os rotores ganhando velocidade na preparação e desacelerando após o pouso. Explicar a integral da potência e a inclinação calculada a partir da velocidade.
 
 ## Perguntas para ensaiar
 
