@@ -31,6 +31,19 @@ def arguments():
         "--size", type=int, nargs=2, default=(1280, 800), metavar=("LARGURA", "ALTURA")
     )
     parser.add_argument("--shadow-size", type=int, choices=(512, 1024, 2048, 4096), default=2048)
+    parser.add_argument(
+        "--msaa",
+        type=int,
+        choices=(0, 2, 4, 8),
+        default=4,
+        help="Amostras de antisserrilhamento; 0 desativa. Fallback automático.",
+    )
+    parser.add_argument(
+        "--view",
+        choices=("base", "encontro", "topo"),
+        default="base",
+        help="Enquadramento inicial da câmera.",
+    )
     parser.add_argument("--no-ui", action="store_true", help="Ocultar o painel para capturas.")
     parser.add_argument(
         "--no-shadows", action="store_true", help="Desligar sombras para comparação didática."
@@ -43,6 +56,8 @@ def arguments():
     if args.fixed_dt is not None and (not math.isfinite(args.fixed_dt) or args.fixed_dt < 0):
         parser.error("fixed-dt deve ser finito e não negativo.")
     if args.headless and not args.frames:
+        args.frames = 1
+    if args.screenshot and not args.frames:
         args.frames = 1
     return args
 
@@ -60,29 +75,36 @@ def run(args):
     from app.scene import apply_mission, build_scene
     from framework.core import Camera
     from framework.renderer import Renderer
+    from framework.window import create_window
 
     pygame.display.init()
     pygame.font.init()
     renderer = None
     try:
-        pygame.display.gl_set_attribute(pygame.GL_CONTEXT_MAJOR_VERSION, 3)
-        pygame.display.gl_set_attribute(pygame.GL_CONTEXT_MINOR_VERSION, 3)
-        pygame.display.gl_set_attribute(
-            pygame.GL_CONTEXT_PROFILE_MASK, pygame.GL_CONTEXT_PROFILE_CORE
-        )
-        pygame.display.gl_set_attribute(pygame.GL_DEPTH_SIZE, 24)
-        pygame.display.gl_set_attribute(pygame.GL_DOUBLEBUFFER, 1)
-        flags = pygame.OPENGL | pygame.DOUBLEBUF | pygame.RESIZABLE
-        pygame.display.set_mode(args.size, flags)
+        samples = create_window(args.size, args.msaa)
         pygame.display.set_caption("Base Aurora | Drone + Helicóptero | Computação Gráfica")
         print("OpenGL:", gl.glGetString(gl.GL_VERSION).decode())
         print("Renderizador:", gl.glGetString(gl.GL_RENDERER).decode())
+        print("Antisserrilhamento MSAA:", samples)
         print("Espaço: pausar | Setas: câmera | WASD: mover | Q/E: zoom | H: ajuda | Esc: sair")
         renderer = Renderer(args.shadow_size)
         renderer.shadows_enabled = not args.no_shadows
         scene, helicopter, drone = build_scene()
         camera, mission, hud = Camera(), Mission(), HUD()
+
+        def preset(view):
+            camera.reset()
+            if view == "encontro":
+                camera.target[:] = (1, 4.0, -0.5)
+                camera.distance = 12
+                camera.elevation = 0.27
+            elif view == "topo":
+                camera.elevation = 1.4
+                camera.distance = 23
+
+        preset(args.view)
         mission.time = args.time
+        dragging, show_ui = False, not args.no_ui
         clock = pygame.time.Clock()
         last_time = time.perf_counter()
         frames, running = 0, True
@@ -108,6 +130,10 @@ def run(args):
                         camera.reset()
                     elif key == pygame.K_h:
                         hud.show_help = not hud.show_help
+                    elif key == pygame.K_TAB:
+                        show_ui = not show_ui
+                    elif key == pygame.K_f:
+                        camera.tracking = not camera.tracking
                     elif key == pygame.K_p:
                         renderer.shadows_enabled = not renderer.shadows_enabled
                     elif key == pygame.K_b:
@@ -119,14 +145,17 @@ def run(args):
                     elif key == pygame.K_F12:
                         capture = Path("captures") / time.strftime("aurora-%Y%m%d-%H%M%S.png")
                     elif key in (pygame.K_1, pygame.K_2, pygame.K_3):
-                        camera.reset()
-                        if key == pygame.K_2:
-                            camera.target[:] = (1, 3.3, -0.5)
-                            camera.distance = 13
-                            camera.elevation = 0.25
-                        elif key == pygame.K_3:
-                            camera.elevation = 1.4
-                            camera.distance = 23
+                        preset(
+                            {pygame.K_1: "base", pygame.K_2: "encontro", pygame.K_3: "topo"}[key]
+                        )
+                elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    dragging = not (show_ui and hud.handle_click(event.pos, mission, camera))
+                elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+                    dragging = False
+                elif event.type == pygame.WINDOWFOCUSLOST:
+                    dragging = False
+                elif event.type == pygame.MOUSEMOTION and dragging:
+                    camera.drag(*event.rel)
                 elif event.type == pygame.MOUSEWHEEL:
                     camera.distance = max(6, min(40, camera.distance - event.y))
             if not running:
@@ -144,12 +173,14 @@ def run(args):
             if frames:
                 mission.advance(dt)
             apply_mission(mission, helicopter, drone)
+            camera.follow(helicopter.position, drone.position, min(elapsed, 0.1))
             size = pygame.display.get_window_size()
             if min(size) <= 0:
                 clock.tick(30)
                 continue
             renderer.render(scene, camera, size)
-            if not args.no_ui:
+            if show_ui:
+                hud.tracking = camera.tracking
                 renderer.draw_overlay(hud.draw(size, mission, renderer, clock.get_fps()))
             frames += 1
             is_last = args.frames and frames >= args.frames
