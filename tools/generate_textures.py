@@ -44,6 +44,20 @@ def generate():
     text = pygame.font.Font(None, 62).render("A U R O R A   /   BASE 01", True, (214, 243, 231))
     surface.blit(text, text.get_rect(center=(320, 40)))
     pygame.image.save(surface, str(out / "aurora.png"))
+    solar = pygame.Surface((256, 256))
+    solar.fill((20, 43, 68))
+    for row in range(6):
+        for col in range(4):
+            cell = pygame.Rect(6 + col * 62, 6 + row * 41, 58, 37)
+            pygame.draw.rect(
+                solar, (30 + row * 2, 63 + row * 3, 94 + row * 3), cell, border_radius=3
+            )
+            pygame.draw.rect(solar, (100, 139, 161), cell, width=1, border_radius=3)
+            pygame.draw.line(
+                solar, (74, 112, 142), (cell.centerx, cell.top), (cell.centerx, cell.bottom)
+            )
+    pygame.draw.rect(solar, (174, 194, 202), solar.get_rect(), width=4)
+    pygame.image.save(solar, str(out / "solar.png"))
     pygame.font.quit()
 
 

@@ -8,7 +8,7 @@ from app.models import Drone
 from app.scene import build_scene
 from framework import matrix as mat
 from framework.core import Camera, Object3D
-from framework.geometry import box, cylinder, sphere
+from framework.geometry import box, cylinder, sphere, torus
 
 
 class FrameworkTests(unittest.TestCase):
@@ -30,7 +30,7 @@ class FrameworkTests(unittest.TestCase):
         self.assertIs(b.parent, c)
 
     def test_unit_normals_uv_and_outward_winding(self):
-        for geometry in (box(), sphere(), cylinder(), cylinder(top_radius=0.16)):
+        for geometry in (box(), sphere(), cylinder(), cylinder(top_radius=0.16), torus()):
             vertices = geometry.vertices
             self.assertEqual(vertices.shape[1], 8)
             self.assertEqual(len(vertices) % 3, 0)
@@ -66,12 +66,19 @@ class FrameworkTests(unittest.TestCase):
         self.assertEqual(len(drone.rotors), 4)
         before = drone.rotors[0].world_matrix()[:3, 3].copy()
         drone.position[:] = (2, 3, 4)
-        drone.animate_rotors(2)
+        drone.animate_rotors(12)
         np.testing.assert_allclose(
             drone.rotors[0].world_matrix()[:3, 3] - before, (2, 3, 4), atol=1e-6
         )
-        self.assertGreater(drone.rotors[0].rotation[1], 0)
-        self.assertLess(drone.rotors[1].rotation[1], 0)
+        angles = [float(rotor.rotation[1]) for rotor in drone.rotors]
+        drone.animate_rotors(12.001)
+        delta = [
+            (float(rotor.rotation[1]) - old + math.pi) % math.tau - math.pi
+            for rotor, old in zip(drone.rotors, angles)
+        ]
+        self.assertGreater(delta[0], 0)
+        self.assertLess(delta[1], 0)
+        self.assertGreater(delta[3], 0)
 
     def test_all_texture_assets_exist_and_world_scales_invertible(self):
         root = Path(__file__).resolve().parents[1]
@@ -86,6 +93,26 @@ class FrameworkTests(unittest.TestCase):
         before = camera.view_matrix().copy()
         camera.control(1, 0.2, -0.1, 1, 1, 0.2)
         self.assertFalse(np.allclose(before, camera.view_matrix()))
+
+    def test_camera_tracking_converges_independently_of_frame_rate(self):
+        targets = []
+        for fps in (30, 144):
+            camera = Camera()
+            camera.tracking = True
+            for _ in range(fps):
+                camera.follow((1, 3, 0), (4, 3, 0), 1 / fps)
+            targets.append(camera.target.copy())
+        np.testing.assert_allclose(targets[0], targets[1], atol=2e-6)
+
+    def test_manual_pan_releases_tracking_and_drag_is_clamped(self):
+        camera = Camera()
+        camera.tracking = True
+        camera.control(0, 0, 0, 1, 0, 0.1)
+        self.assertFalse(camera.tracking)
+        camera.drag(20, 10000)
+        self.assertLessEqual(camera.elevation, 1.45)
+        camera.drag(0, -20000)
+        self.assertGreaterEqual(camera.elevation, 0.12)
 
 
 if __name__ == "__main__":

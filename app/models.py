@@ -2,8 +2,9 @@
 
 import math
 
+from app.mission import rotor_motion
 from framework.core import Material, Mesh, Object3D
-from framework.geometry import box, cylinder, sphere
+from framework.geometry import box, cylinder, sphere, torus
 
 WHITE = Material((0.82, 0.88, 0.88), specular=0.4)
 NAVY = Material((0.065, 0.12, 0.16), specular=0.4)
@@ -61,6 +62,7 @@ class Drone(Object3D):
                 (0, math.atan2(x, z), 0),
             )
             part(self, "motor", cylinder(), NAVY, (x, 0.48, z), (0.20, 0.24, 0.20))
+            part(self, "protetor_helice", torus(), WHITE, (x, 0.61, z), (1.02, 1, 1.02))
             rotor = group(self, f"helice_{len(self.rotors) + 1}", (x, 0.63, z))
             part(rotor, "pa", box(), TEAL, (0, 0, 0), (0.88, 0.025, 0.10))
             part(rotor, "ponta_a", box(), WHITE, (0.37, 0.002, 0), (0.13, 0.028, 0.10))
@@ -91,11 +93,12 @@ class Drone(Object3D):
         )
 
     def animate_rotors(self, time):
+        angular_time, power = rotor_motion(time, drone=True)
         for index, rotor in enumerate(self.rotors):
             # Pares diagonais em sentidos contrários, sem incremento por quadro.
             sign = 1 if index in (0, 3) else -1
-            rotor.rotation[1] = sign * time * 43 + index * 0.7
-        self.gimbal.rotation[0] = -0.15 + 0.12 * math.sin(time * 1.1)
+            rotor.rotation[1] = (sign * angular_time * 43 + index * 0.7) % math.tau
+        self.gimbal.rotation[0] = -0.15 + power * 0.06 * math.sin(time * 1.1)
 
 
 class Helicopter(Object3D):
@@ -179,7 +182,25 @@ class Helicopter(Object3D):
                 (0.12, 0.12, 0.12),
             )
         part(self, "farol", sphere(), WHITE, (0, 0.64, 1.24), (0.25, 0.16, 0.12))
+        for x in (-0.62, 0.62):
+            part(
+                self, "janela_lateral", sphere(32, 16), GLASS, (x, 1.19, -0.22), (0.20, 0.44, 0.53)
+            )
+            part(self, "moldura_porta", box(), METAL, (x, 0.83, -0.51), (0.04, 0.6, 0.035))
+            part(self, "macaneta", box(), NAVY, (x * 1.10, 0.94, -0.25), (0.035, 0.045, 0.17))
+            for z in (-0.55, -0.41, -0.27):
+                part(self, "entrada_ar", box(), METAL, (x * 0.49, 1.64, z), (0.025, 0.13, 0.045))
+        part(
+            self,
+            "antena_radio",
+            cylinder(),
+            NAVY,
+            (0, 1.48, -0.83),
+            (0.025, 0.57, 0.025),
+            (-0.22, 0, 0),
+        )
 
     def animate_rotors(self, time):
-        self.main_rotor.rotation[1] = time * 23
-        self.tail_rotor.rotation[0] = time * 37
+        angular_time, _ = rotor_motion(time)
+        self.main_rotor.rotation[1] = (angular_time * 23) % math.tau
+        self.tail_rotor.rotation[0] = (angular_time * 37) % math.tau

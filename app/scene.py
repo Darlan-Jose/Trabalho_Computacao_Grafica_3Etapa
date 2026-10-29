@@ -23,10 +23,27 @@ from framework.geometry import box, cylinder, sphere
 def build_scene():
     scene = Scene("base_aurora")
     concrete = Material(
-        (0.57, 0.65, 0.65), texture="assets/textures/concrete.png", uv_repeat=(8, 8), specular=0.05
+        (0.63, 0.69, 0.70), texture="assets/textures/concrete.png", uv_repeat=(8, 8), specular=0.05
     )
     part(scene, "plataforma", box(), NAVY, (0, -0.39, 0), (18, 0.7, 15))
+    part(
+        scene, "fundacao", box(), Material((0.14, 0.23, 0.28)), (0, -0.71, 0), (18.35, 0.16, 15.35)
+    )
     part(scene, "piso_texturizado", box(), concrete, (0, -0.025, 0), (17.8, 0.08, 14.8))
+    for x in (-8.85, 8.85):
+        part(scene, "borda_lateral", box(), WHITE, (x, 0.015, 0), (0.08, 0.08, 14.7))
+    for z in (-7.35, 7.35):
+        part(scene, "borda_frontal", box(), WHITE, (0, 0.015, z), (17.7, 0.08, 0.08))
+    for x in range(-8, 9, 2):
+        part(
+            scene,
+            "marca_perimetral",
+            box(),
+            YELLOW,
+            (x, 0.028, 6.9),
+            (0.6, 0.015, 0.09),
+            cast_shadow=False,
+        )
     part(
         scene,
         "solo",
@@ -82,10 +99,10 @@ def build_scene():
         part(
             scene,
             name + "_imagem",
-            box(),
+            cylinder(64),
             Material((1, 1, 1), texture=f"assets/textures/{label}.png", specular=0.05),
             (pad[0], 0.147, pad[2]),
-            (size * 0.70, 0.014, size * 0.70),
+            (size * 0.96, 0.014, size * 0.96),
             cast_shadow=False,
         )
         for i in range(12):
@@ -103,6 +120,17 @@ def build_scene():
     hangar = group(scene, "hangar", (-5.5, 0, -4.8))
     part(hangar, "edificio", box(), Material((0.19, 0.29, 0.32)), (0, 1.2, 0), (4.3, 2.4, 2.9))
     part(hangar, "cobertura", box(), TEAL, (0, 2.45, 0), (4.6, 0.18, 3.2))
+    for x in (-1.08, 1.08):
+        part(hangar, "suporte_painel", box(), NAVY, (x, 2.59, -0.15), (1.72, 0.12, 1.75))
+        part(
+            hangar,
+            "painel_solar",
+            box(),
+            Material(texture="assets/textures/solar.png", specular=0.55, shininess=60),
+            (x, 2.68, -0.15),
+            (1.68, 0.035, 1.70),
+            (0.12, 0, 0),
+        )
     part(hangar, "porta", box(), NAVY, (0, 1.05, 1.46), (3.45, 2.05, 0.05))
     for y in (0.25, 0.55, 0.85, 1.15, 1.45, 1.75):
         part(hangar, "lamina_porta", box(), METAL, (0, y, 1.50), (3.3, 0.035, 0.03))
@@ -141,6 +169,25 @@ def build_scene():
     part(tower, "telhado", box(), TEAL, (0, 3.52, 0), (2.65, 0.16, 2.45))
     part(tower, "antena", cylinder(), METAL, (0, 4.0, 0), (0.06, 0.95, 0.06))
     part(tower, "baliza", sphere(), ORANGE, (0, 4.5, 0), (0.17, 0.17, 0.17))
+    part(tower, "porta_acesso", box(), NAVY, (0, 0.72, 0.755), (0.68, 1.4, 0.035))
+    part(tower, "puxador", box(), YELLOW, (0.22, 0.72, 0.79), (0.035, 0.18, 0.04))
+    for z in (-0.35, 0.35):
+        part(tower, "lateral_escada", box(), METAL, (-0.78, 1.25, z), (0.045, 2.4, 0.045))
+    for y in (0.25, 0.55, 0.85, 1.15, 1.45, 1.75, 2.05, 2.35):
+        part(tower, "degrau_escada", box(), METAL, (-0.78, y, 0), (0.045, 0.045, 0.7))
+    for x in range(-8, 9, 2):
+        part(scene, "poste_guarda_corpo", cylinder(), METAL, (x, 0.46, -7), (0.07, 0.86, 0.07))
+    for y in (0.35, 0.85):
+        part(scene, "guarda_corpo", box(), METAL, (0, y, -7), (16, 0.055, 0.055))
+    for i in range(3):
+        part(
+            scene,
+            "escada_plataforma",
+            box(),
+            concrete,
+            (-5.3, -0.51 + i * 0.18, 7.7 - i * 0.34),
+            (2.1, 0.18, 0.65),
+        )
     # Balizadores baixos evitam esconder os protagonistas.
     for x in (-8.3, 8.3):
         for z in (-6.5, -2.5, 1.5, 5.5):
@@ -165,8 +212,8 @@ def build_scene():
 def apply_mission(mission, helicopter, drone):
     pose = mission.pose
     helicopter.position[:] = pose.helicopter
-    helicopter.rotation[1] = pose.helicopter_yaw
+    helicopter.rotation[:] = (pose.helicopter_pitch, pose.helicopter_yaw, pose.helicopter_roll)
     drone.position[:] = pose.drone
-    drone.rotation[1] = pose.drone_yaw
+    drone.rotation[:] = (pose.drone_pitch, pose.drone_yaw, pose.drone_roll)
     helicopter.animate_rotors(mission.time)
     drone.animate_rotors(mission.time)
