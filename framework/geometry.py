@@ -98,3 +98,22 @@ def cylinder(segments=32, top_radius=0.5):
 
             rows.extend((center, edge(b), edge(a)) if ny > 0 else (center, edge(a), edge(b)))
     return Geometry(rows)
+
+
+@lru_cache(maxsize=None)
+def torus(segments=32, rings=8, tube=0.025):
+    """Anel no plano XZ, diâmetro externo unitário; usado nos protetores de hélice."""
+    rows = []
+
+    def vertex(i, j):
+        u, v = i / segments, j / rings
+        a, b = u * math.tau, v * math.tau
+        radius = 0.5 - tube + tube * math.cos(b)
+        normal = (math.cos(a) * math.cos(b), math.sin(b), math.sin(a) * math.cos(b))
+        return [radius * math.cos(a), tube * math.sin(b), radius * math.sin(a), *normal, u, v]
+
+    for i in range(segments):
+        for j in range(rings):
+            a, b, c, d = vertex(i, j), vertex(i + 1, j), vertex(i + 1, j + 1), vertex(i, j + 1)
+            rows.extend((a, d, b, b, d, c))
+    return Geometry(rows)

@@ -49,9 +49,14 @@ void main() {
     float diffuse = max(dot(N, L), 0.0);
     float specular = diffuse > 0.0 ? pow(max(dot(N,H), 0.0), shininess) * specularStrength : 0.0;
     float visibility = shadowVisibility(N,L);
-    // Ambiente continua presente na sombra; só a luz direta é ocluída.
-    vec3 lit = color * vec3(0.27,0.31,0.36) + visibility *
-               (color * vec3(0.94,0.87,0.73) * diffuse + vec3(specular));
+    // Ambiente hemisférico: preenchimento frio do céu e mais escuro do chão.
+    // A sombra oclui somente a contribuição direta da luz direcional.
+    vec3 ambient = mix(vec3(0.17,0.20,0.24), vec3(0.39,0.44,0.49), N.y*0.5+0.5);
+    vec3 lit = color * ambient + visibility *
+               (color * vec3(0.91,0.82,0.70) * diffuse + vec3(specular));
+    // Aproximação artística de reflexão rasante nos materiais mais especulares.
+    float rim = pow(1.0-max(dot(N,V),0.0),3.0)*specularStrength*0.13;
+    lit += vec3(0.36,0.65,0.78)*rim;
     lit = mix(lit, color, clamp(emission, 0.0, 1.0));
     float fog = smoothstep(28.0, 65.0, length(cameraPosition-worldPosition));
     fragColor = vec4(mix(lit, vec3(0.055,0.09,0.13), fog), 1.0);

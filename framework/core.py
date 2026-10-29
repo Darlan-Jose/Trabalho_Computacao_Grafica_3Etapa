@@ -87,10 +87,11 @@ class Camera(Object3D):
         self.reset()
 
     def reset(self):
-        self.target = np.array([0, 1.2, 0], dtype=np.float32)
+        self.target = np.array([0, 0.2, 0], dtype=np.float32)
         self.azimuth = math.radians(34)
         self.elevation = math.radians(32)
         self.distance = 24.0
+        self.tracking = False
 
     @property
     def eye(self):
@@ -114,3 +115,14 @@ class Camera(Object3D):
         forward = np.array([-math.sin(self.azimuth), 0, -math.cos(self.azimuth)])
         self.target += (right * pan_x + forward * pan_z) * dt * 5
         self.target[[0, 2]] = np.clip(self.target[[0, 2]], -12, 12)
+        if pan_x or pan_z:
+            self.tracking = False
+
+    def drag(self, dx, dy):
+        self.azimuth -= dx * 0.006
+        self.elevation = float(np.clip(self.elevation + dy * 0.006, 0.12, 1.45))
+
+    def follow(self, helicopter, drone, dt):
+        if self.tracking:
+            target = (np.asarray(helicopter) + np.asarray(drone)) * 0.5 + (0, 0.8, 0)
+            self.target += (target - self.target) * (1 - math.exp(-4 * dt))
