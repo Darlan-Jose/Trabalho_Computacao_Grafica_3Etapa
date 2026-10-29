@@ -9,6 +9,7 @@ from app.mission import (
     OFFSET,
     STAGES,
     Mission,
+    rotor_motion,
     sample,
 )
 
@@ -72,6 +73,10 @@ class MissionTests(unittest.TestCase):
             for a, b in [
                 (before.helicopter_yaw, after.helicopter_yaw),
                 (before.drone_yaw, after.drone_yaw),
+                (before.helicopter_pitch, after.helicopter_pitch),
+                (before.helicopter_roll, after.helicopter_roll),
+                (before.drone_pitch, after.drone_pitch),
+                (before.drone_roll, after.drone_roll),
             ]:
                 self.assertLess(abs((a - b + math.pi) % math.tau - math.pi), 1e-4)
 
@@ -103,6 +108,48 @@ class MissionTests(unittest.TestCase):
                 sample(value)
             with self.assertRaises(ValueError):
                 Mission().advance(value)
+
+    def test_rotor_acceleration_is_integral_of_power(self):
+        for drone in (False, True):
+            for t in (0.5, 1.5, 8, 9.5, 10.5, 16, 35.5, 36.5, 37.5):
+                _, power = rotor_motion(t, drone)
+                derivative = (
+                    rotor_motion(t + 1e-5, drone)[0] - rotor_motion(t - 1e-5, drone)[0]
+                ) / 2e-5
+                self.assertAlmostEqual(derivative, power, places=6)
+                self.assertTrue(0 <= power <= 1)
+
+    def test_rotors_do_not_jump_at_phase_or_cycle_boundaries(self):
+        for drone in (False, True):
+            for t in (2, 9, 11, 35, 37, 74):
+                before = rotor_motion(t - 1e-7, drone)
+                after = rotor_motion(t + 1e-7, drone)
+                self.assertLess(abs(after[0] - before[0]), 1e-6)
+                self.assertLess(abs(after[1] - before[1]), 1e-6)
+        self.assertEqual(rotor_motion(8, True), (0, 0))
+
+    def test_flight_banks_during_travel_and_levels_at_rest(self):
+        moving = sample(17)
+        self.assertGreater(abs(moving.drone_roll), 0.05)
+        for t in (0, 14, 20, 35):
+            pose = sample(t)
+            self.assertEqual(
+                (pose.helicopter_pitch, pose.helicopter_roll, pose.drone_pitch, pose.drone_roll),
+                (0, 0, 0, 0),
+            )
+
+    def test_seek_preserves_cycle_speed_and_pause(self):
+        mission = Mission()
+        mission.time = CYCLE_DURATION + 2
+        mission.speed = 2
+        mission.paused = True
+        mission.seek(4, 0.5)
+        self.assertEqual(mission.time, CYCLE_DURATION + 17)
+        self.assertTrue(mission.paused)
+        self.assertEqual(mission.speed, 2)
+        for stage, progress in ((-1, 0), (9, 0), (0, -0.1), (1, 1.1)):
+            with self.assertRaises(ValueError):
+                mission.seek(stage, progress)
 
 
 if __name__ == "__main__":

@@ -70,6 +70,45 @@ class Pose:
     helicopter_yaw: float
     drone_yaw: float
     cycle: int
+    helicopter_pitch: float = 0.0
+    helicopter_roll: float = 0.0
+    drone_pitch: float = 0.0
+    drone_roll: float = 0.0
+
+
+def rotor_motion(time, drone=False):
+    """Integral exata da velocidade de partida/parada, independente do FPS.
+
+    Retorna (tempo angular equivalente em velocidade plena, potência de 0 a 1).
+    A fase acumulada atravessa os ciclos sem saltos na orientação das pás.
+    """
+    cycle, t = divmod(time, CYCLE_DURATION)
+    start, stop, ramp = (9.0 if drone else 0.0), 35.0, 2.0
+    area_per_cycle = stop - start
+
+    def integral(u):
+        return u**3 - 0.5 * u**4
+
+    if t < start:
+        area, power = 0.0, 0.0
+    elif t < start + ramp:
+        u = (t - start) / ramp
+        area, power = ramp * integral(u), smoothstep(u)
+    elif t < stop:
+        area, power = t - start - ramp / 2, 1.0
+    else:
+        u = (t - stop) / ramp
+        area = stop - start - ramp / 2 + ramp * (u - integral(u))
+        power = 1 - smoothstep(u)
+    return cycle * area_per_cycle + area, power
+
+
+def flight_tilt(velocity, yaw):
+    """Inclinação ilustrativa em relação ao deslocamento no referencial da aeronave."""
+    vx, _, vz = velocity
+    forward = vx * math.sin(yaw) + vz * math.cos(yaw)
+    sideways = vx * math.cos(yaw) - vz * math.sin(yaw)
+    return (max(-0.16, min(0.16, forward * 0.09)), max(-0.18, min(0.18, -sideways * 0.12)))
 
 
 def sample(time):
@@ -106,11 +145,16 @@ def sample(time):
     ]
     helicopter = lerp(*heli_paths[index], p)
     drone = lerp(*drone_paths[index], p)
+    derivative = 6 * p * (1 - p) / STAGES[index].duration
+    heli_velocity = tuple((b - a) * derivative for a, b in zip(*heli_paths[index]))
+    drone_velocity = tuple((b - a) * derivative for a, b in zip(*drone_paths[index]))
     if index == 4:
         # Começa e termina exatamente no mesmo deslocamento da escolta.
         a = math.atan2(OFFSET[2], OFFSET[0]) + math.tau * smoothstep(p)
         radius = math.hypot(OFFSET[0], OFFSET[2])
         drone = add(helicopter, (radius * math.cos(a), OFFSET[1], radius * math.sin(a)))
+        omega = math.tau * derivative
+        drone_velocity = (-radius * math.sin(a) * omega, 0, radius * math.cos(a) * omega)
     headings = [
         (0, 0),
         (0, math.pi / 2),
@@ -126,7 +170,17 @@ def sample(time):
     # A câmera do drone olha para o helicóptero durante reconhecimento/escolta.
     dx, dz = helicopter[0] - drone[0], helicopter[2] - drone[2]
     drone_yaw = math.atan2(dx, dz)
-    return Pose(index, p, helicopter, drone, heli_yaw, drone_yaw, int(time // CYCLE_DURATION))
+    return Pose(
+        index,
+        p,
+        helicopter,
+        drone,
+        heli_yaw,
+        drone_yaw,
+        int(time // CYCLE_DURATION),
+        *flight_tilt(heli_velocity, heli_yaw),
+        *flight_tilt(drone_velocity, drone_yaw),
+    )
 
 
 class Mission:
@@ -153,3 +207,12 @@ class Mission:
         pose = self.pose
         start = sum(s.duration for s in STAGES[: pose.stage_index + 1])
         self.time = pose.cycle * CYCLE_DURATION + start
+
+    def seek(self, stage_index, progress=0.0):
+        """Navegação da linha do tempo, preservando ciclo, velocidade e pausa."""
+        if not 0 <= stage_index < len(STAGES) or not 0 <= progress <= 1:
+            raise ValueError("Etapa ou progresso fora do intervalo.")
+        start = sum(stage.duration for stage in STAGES[:stage_index])
+        self.time = (
+            self.pose.cycle * CYCLE_DURATION + start + STAGES[stage_index].duration * progress
+        )
