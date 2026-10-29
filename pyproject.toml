@@ -1,0 +1,11 @@
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+exclude = [".venv", "dist"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]
+
+[tool.ruff.lint.per-file-ignores]
+"tools/validate_render.py" = ["E402"]
+"tools/generate_textures.py" = ["E402"]

@@ -1,0 +1,5 @@
+# Versões utilizadas na validação Linux / Python 3.14.8.
+# Para outras versões de Python, usar requirements.txt.
+numpy==2.5.4
+pygame-ce==2.5.8
+PyOpenGL==3.1.10
