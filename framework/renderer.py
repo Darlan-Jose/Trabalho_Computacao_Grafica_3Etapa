@@ -43,7 +43,7 @@ class Program:
     def integer(self, name, value): #Booleanos ou samplers
         gl.glUniform1i(self.location(name), int(value))
 
-    def scalar(self, name, value): # float par escalares
+    def scalar(self, name, value): # float para escalares
         gl.glUniform1f(self.location(name), float(value))
 
 
