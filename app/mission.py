@@ -42,12 +42,12 @@ DESTINATION = (-1.6, 4.5, -3.8) # Destino da escolta
 OFFSET = (2.8, 0.35, 1.7) # Deslocamento do drone em relação ao helicóptero
 DRONE_AIR = (3.8, 2.6, 3.0) # Ponto aéreo do drone no retorno
 
-
+# Calcula a posição intermediária entre dois pontos
 def add(a, b): # Soma dois vetores, representados por tuplas
     return tuple(x + y for x, y in zip(a, b)) # Usado para MEETING + OFFSET e DESTINATION + OFFSET
 
 
-def smoothstep(t): # Evita mudanças bruscas de velocidade no início e fim de cada etapa
+def smoothstep(t): # Suaviza o movimento fazendo com que a aeronave acelere e desacelere gradualmente.
     return t * t * (3 - 2 * t)
 
 

@@ -30,6 +30,7 @@ class Object3D: # Tudo que pode ser colocado na cena
         self.children.append(child)
         return child
 
+    # Calcula a matriz de transformação local do objeto.
     def local_matrix(self): # M = T × Ry × Rx × Rz × S, matrizes são aplicadas da direita para esquerda (p → S → Rz → Rx → Ry → T)
         x, y, z = self.rotation
         return (
@@ -40,6 +41,7 @@ class Object3D: # Tudo que pode ser colocado na cena
             @ mat.scale(*self.scaling) # escala
         )
 
+    # Calcula sua transformação considerando também os objetos pais.
     def world_matrix(self): # É o produto da matriz do pai local
         local = self.local_matrix()
         return local if self.parent is None else self.parent.world_matrix() @ local

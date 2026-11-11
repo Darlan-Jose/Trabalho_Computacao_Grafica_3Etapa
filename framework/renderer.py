@@ -12,8 +12,12 @@ from framework import matrix as mat
 
 ROOT = Path(__file__).resolve().parents[1]
 
+# Os principais programas utilizados são:
+#lit.vert: processamento dos vértices.
+#lit.frag: cálculo da aparência dos pixels, incluindo iluminação.
+#depth.vert e depth.frag: geração das informações de profundidade utilizadas nas sombras.
 
-class Program:
+class Program: # Representa um programa GLSL compilado
     def __init__(self, name):
         vertex = (ROOT / "shaders" / f"{name}.vert").read_text(encoding="utf-8")
         fragment = (ROOT / "shaders" / f"{name}.frag").read_text(encoding="utf-8")
